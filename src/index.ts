@@ -1,106 +1,102 @@
+export enum HyperTextMarkerToken {
+  TOKEN_WHITESPACE,
+  TOKEN_INDENTATION,
+  TOKEN_STAR_SYMBOL,
+  TOKEN_NEWLINE,
+  TOKEN_EOF,
+}
+
 interface Lexer {
-  position: number,
   source: string,
+  position: number,
 }
 
-function advance(lexer: Lexer): boolean {
-  if (lexer.position >= lexer.source.length) {
-    return false;
-  } else {
+function lexer_reached_eof(lexer: Lexer): boolean {
+  return lexer.position >= lexer.source.length;
+}
+
+function lexer_advance(lexer: Lexer) {
     lexer.position += 1;
-    return true;
-  }
 }
 
-function peek_character(lexer: Lexer): string {
-  const next_character = lexer.source[lexer.position];
-
-  if(next_character == undefined) {
-    return ""
-  } else {
-    return next_character;
-  }
+function lexer_peek_character(lexer: Lexer): string {
+  return lexer.source[lexer.position] ?? "";
 }
 
-function parse_symbol_token(lexer: Lexer): Token {
+function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
+  let tokens: HyperTextMarkerToken[] = [];
+
   const start = lexer.position;
   let end = lexer.position;
 
-  while(advance(lexer)) {
-    const current_symbol = peek_character(lexer);
-
-    if(is_symbol(current_symbol) && lexer.source[start] === current_symbol) {
-      end += 1;
-    } else {
+  while(!lexer_reached_eof(lexer)) {
+    const next_character = lexer_peek_character(lexer);
+    if(next_character == '\r' || next_character == '\n') {
       break;
     }
-  }
 
-  return new_symbolic_token(lexer.source, start, end);
-}
-
-enum MarkdownTokenType {
-  THEMATIC_BREAK,
-  UNKNOWN,
-}
-
-interface Token {
-  type: MarkdownTokenType,
-  representation: string,
-  position_start: number,
-  position_end: number,
-  length: number
-}
-
-function new_symbolic_token(source: string, start: number, end: number): Token {
-  const representation = source.slice(start, end + 1);
-  if(representation.length === 3) {
-    return {
-      type: MarkdownTokenType.THEMATIC_BREAK,
-      representation: representation,
-      position_start: start,
-      position_end: end,
-      length: (end - start) + 1
-    }
-  } else {
-    return {
-      type: MarkdownTokenType.UNKNOWN,
-      representation: representation,
-      position_start: start,
-      position_end: end,
-      length: (end - start) + 1,
+    if(is_whitespace(next_character)) {
+      end += 1;
+      lexer_advance(lexer);
     }
   }
+
+  const length = end - start;
+
+  //NOTE: Add Indentation Tokens
+  const symbol_count = Math.floor(length / 4);
+  for(let i = 0; i < symbol_count; i++) {
+    tokens.push(HyperTextMarkerToken.TOKEN_INDENTATION);
+  }
+
+  //NOTE: Add Whitespace tokens that were not consume by the previous operation
+  let rest = length - (symbol_count * 4);
+  for(let i = 0; i < rest; i++) {
+    tokens.push(HyperTextMarkerToken.TOKEN_WHITESPACE);
+  }
+
+  return tokens;
 }
 
+function lexer_generate_whitespace_token(): HyperTextMarkerToken {
+  return HyperTextMarkerToken.TOKEN_EOF;
+}
 
-export function transpile_md_to_html(source: string, pretty: boolean): string {
-  let token_pool: Token[] = [];
-  const lexer: Lexer = {
-    position: 0,
+export function tokenize(source: string): HyperTextMarkerToken[] {
+  let lexer: Lexer = {
     source: source,
+    position: 0,
   }
 
-  while(lexer.position < lexer.source.length) {
-    const current_symbol = peek_character(lexer);
+  let result: HyperTextMarkerToken[] = []
+  while(!lexer_reached_eof(lexer)) {
+    const next_character = lexer_peek_character(lexer);
 
-    if(is_whitespace(current_symbol)) {
-      advance(lexer);
+    //NOTE: Windows uses \r\n so we just consume the \r and react on \n
+    if(next_character == '\r') { 
+      lexer_advance(lexer);
+    } 
+    else if(next_character == '\t') {
+      result.push(HyperTextMarkerToken.TOKEN_INDENTATION);
+      lexer_advance(lexer);
     }
-    else if(is_symbol(current_symbol)) {
-      token_pool.push(parse_symbol_token(lexer));
+    else if(next_character == '\n') {
+      result.push(HyperTextMarkerToken.TOKEN_NEWLINE)
+      lexer_advance(lexer);
+    } 
+    else if(is_whitespace(next_character)) {
+      const generated_tokens = generate_whitespace_token(lexer)
+      result = [... generated_tokens];
+    } 
+    else {
+      lexer_advance(lexer);
     }
+    
   }
 
-  let html_output: string = "";
-  for(let i = 0; i < token_pool.length; i++) {
-    if(token_pool[i].type == MarkdownTokenType.THEMATIC_BREAK) {
-      html_output += "<hr/>"
-    }
-  }
-
-  return html_output;
-} 
+  result.push(HyperTextMarkerToken.TOKEN_EOF);
+  return result;
+}
 
 function is_whitespace(c: string): boolean {
   return c.trim() === "";
