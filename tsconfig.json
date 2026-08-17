@@ -44,5 +44,5 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
   },
-  "exclude": [ "node_modules", "tests/**", "assets/**"]
+  "exclude": [ "node_modules", "tests/**", "assets/**", "dist/**"]
 }
