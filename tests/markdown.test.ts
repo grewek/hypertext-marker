@@ -1,10 +1,44 @@
 import { expect, test } from 'vitest'
-import { transpile_md_to_html } from '../src/index.ts'
+import { HyperTextMarkerToken, tokenize, transpile_md_to_html } from '../src/index.ts'
 
-test('the transpilation process can handle "thematic breaks" like `***`, `---` or `___`', () => {
-  let input: string = "***\n---\n___\n";
-  let expected: string = "<hr/><hr/><hr/>"
+//NOTE: Markdown is after checking the format, not context free :( that means we need a lexer and make multiple passes over the input file.
 
-  let result = transpile_md_to_html(input, false);
-  expect(result).toBe(expected);
+
+/*test('the lexer handles symbols as seperate tokens', () => {
+  let input = '*';
+  let expected: HyperTextMarkerToken[] = [
+    HyperTextMarkerToken.TOKEN_STAR_SYMBOL,
+    HyperTextMarkerToken.TOKEN_EOF,
+  ];
+
+  let result = tokenize(input);
+  expect(result).toStrictEqual(expected);
+})*/
+
+test('the lexer handles whitespace as token and does not ignore it', () => {
+  let input = "   ";
+  let expected: HyperTextMarkerToken[] = [
+    HyperTextMarkerToken.TOKEN_WHITESPACE,
+    HyperTextMarkerToken.TOKEN_WHITESPACE,
+    HyperTextMarkerToken.TOKEN_WHITESPACE,
+    HyperTextMarkerToken.TOKEN_EOF,
+  ];
+
+  let result = tokenize(input);
+  expect(result).toStrictEqual(expected);
+})
+
+test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation level', () => {
+  let input = "    \n\t\n";
+
+  let expected: HyperTextMarkerToken[] = [
+    HyperTextMarkerToken.TOKEN_INDENTATION,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_INDENTATION,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_EOF
+  ];
+
+  let result = tokenize(input);
+  expect(result).toStrictEqual(expected);
 })
