@@ -15,6 +15,26 @@ import { HyperTextMarkerToken, tokenize, transpile_md_to_html } from '../src/ind
   expect(result).toStrictEqual(expected);
 })*/
 
+test('the lexer handles atx-heading indicators', () => {
+  let input = "#\n##\n###\n####\n#####\n######"
+  let expected: HyperTextMarkerToken[] = [
+    HyperTextMarkerToken.TOKEN_HEADING_H1,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_HEADING_H2,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_HEADING_H3,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_HEADING_H4,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_HEADING_H5,
+    HyperTextMarkerToken.TOKEN_NEWLINE,
+    HyperTextMarkerToken.TOKEN_HEADING_H6,
+    HyperTextMarkerToken.TOKEN_EOF,
+  ];
+
+  let result = tokenize(input);
+  expect(result).toStrictEqual(expected);
+})
 test('the lexer handles whitespace as token and does not ignore it', () => {
   let input = "   ";
   let expected: HyperTextMarkerToken[] = [
