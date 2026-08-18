@@ -1,4 +1,12 @@
 export enum HyperTextMarkerToken {
+  TOKEN_HEADING_H1,
+  TOKEN_HEADING_H2,
+  TOKEN_HEADING_H3,
+  TOKEN_HEADING_H4,
+  TOKEN_HEADING_H5,
+  TOKEN_HEADING_H6,
+  TOKEN_UNKNOWN,
+  TOKEN_SYMBOL_HASH_SIGN,
   TOKEN_WHITESPACE,
   TOKEN_INDENTATION,
   TOKEN_STAR_SYMBOL,
@@ -21,6 +29,10 @@ function lexer_advance(lexer: Lexer) {
 
 function lexer_peek_character(lexer: Lexer): string {
   return lexer.source[lexer.position] ?? "";
+}
+
+function lexer_peek_next_character(lexer: Lexer): string {
+  return lexer.source[lexer.position + 1] ?? "";
 }
 
 function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
@@ -62,6 +74,69 @@ function lexer_generate_whitespace_token(): HyperTextMarkerToken {
   return HyperTextMarkerToken.TOKEN_EOF;
 }
 
+function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
+  const start = lexer.position;
+  let end = lexer.position;
+  let whitespace_detected = false;
+
+  while(!lexer_reached_eof(lexer)) {
+    let next_character = lexer_peek_next_character(lexer);
+    if(next_character == '#') {
+      lexer_advance(lexer);
+      end = lexer.position;
+    } else {
+      if((next_character != '\n' || next_character != '\r') && is_whitespace(next_character)) {
+        whitespace_detected = true;
+      }
+
+      lexer_advance(lexer);
+      break;
+    }
+  }
+
+  const length = (end - start) + 1;
+
+  if ((length >= 1 && length <= 6) && whitespace_detected == true) {
+    //TODO: Hidden beyond this switch is an abstraction, but this requires us to use union types instead of
+    //      raw enums, and i will get to this point but right now isn't the time to fix this __yet__
+    switch(length) {
+      case 1: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H1
+      }
+      case 2: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H2
+      }
+      case 3: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H3
+      }
+      case 4: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H4
+      }
+      case 5: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H5
+      }
+      case 6: {
+        return HyperTextMarkerToken.TOKEN_HEADING_H6
+      }
+      default: {
+      }
+    }
+  }
+
+  return HyperTextMarkerToken.TOKEN_SYMBOL_HASH_SIGN
+}
+function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
+  switch(lexer_peek_character(lexer)) {
+    case '#': {
+      return lexer_handle_possible_heading(lexer);
+      break;
+    }
+    default: {
+      return HyperTextMarkerToken.TOKEN_UNKNOWN;
+    }
+  }
+}
+
 export function tokenize(source: string): HyperTextMarkerToken[] {
   let lexer: Lexer = {
     source: source,
@@ -88,6 +163,11 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       const generated_tokens = generate_whitespace_token(lexer)
       result = [... generated_tokens];
     } 
+    else if (is_symbol(next_character)) {
+      
+      const generated_token = lexer_handle_symbol(lexer);
+      result.push(generated_token);
+    }
     else {
       lexer_advance(lexer);
     }
