@@ -62,6 +62,7 @@ export type HyperTextMarkerToken =
   SymbolToken      | 
   WhitespaceToken  | 
   IndentationToken |
+  EndOfLineToken   |
   EndOfFileToken;
 
 function lexer_reached_eof(lexer: Lexer): boolean {
@@ -103,20 +104,36 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
   //NOTE: Add Indentation Tokens
   const symbol_count = Math.floor(length / 4);
   for(let i = 0; i < symbol_count; i++) {
-    tokens.push(HyperTextMarkerToken.TOKEN_INDENTATION);
+    const token: IndentationToken = {
+      kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+      meta: {
+        representation: lexer.source,
+        //TODO: We need to calculate the correct start and end of the indentation blocks!
+        length: length,
+        start: start,
+        end: end,
+      }
+    }
+    tokens.push(token);
   }
 
   //NOTE: Add Whitespace tokens that were not consume by the previous operation
   let rest = length - (symbol_count * 4);
   for(let i = 0; i < rest; i++) {
-    tokens.push(HyperTextMarkerToken.TOKEN_WHITESPACE);
+    const token: WhitespaceToken = {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      meta: {
+        representation: lexer.source,
+        //TODO: We need to calculate the correct start and end of the indentation blocks!
+        length: start - end,
+        start: start,
+        end: end,
+      }
+    }
+    tokens.push(token);
   }
 
   return tokens;
-}
-
-function lexer_generate_whitespace_token(): HyperTextMarkerToken {
-  return HyperTextMarkerToken.TOKEN_EOF;
 }
 
 function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
@@ -130,7 +147,7 @@ function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
       lexer_advance(lexer);
       end = lexer.position;
     } else {
-      if((next_character != '\n' || next_character != '\r') && is_whitespace(next_character)) {
+      if((next_character != '\n' && next_character != '\r') && is_whitespace(next_character)) {
         whitespace_detected = true;
       }
 
@@ -142,33 +159,31 @@ function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
   const length = (end - start) + 1;
 
   if ((length >= 1 && length <= 6) && whitespace_detected == true) {
-    //TODO: Hidden beyond this switch is an abstraction, but this requires us to use union types instead of
-    //      raw enums, and i will get to this point but right now isn't the time to fix this __yet__
-    switch(length) {
-      case 1: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H1
+    const token: HeadingToken = {
+      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
+      depth: length,
+      meta: {
+        representation: lexer.source,
+        length: end - start,
+        start: start,
+        end: end,
       }
-      case 2: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H2
-      }
-      case 3: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H3
-      }
-      case 4: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H4
-      }
-      case 5: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H5
-      }
-      case 6: {
-        return HyperTextMarkerToken.TOKEN_HEADING_H6
-      }
-      default: {
-      }
+    };
+
+    return token;
+  }
+
+  const token: SymbolToken = {
+    kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+    meta: {
+      representation: lexer.source,
+      length: 1,
+      start: start,
+      end: end,
     }
   }
 
-  return HyperTextMarkerToken.TOKEN_SYMBOL_HASH_SIGN
+  return token;
 }
 function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   switch(lexer_peek_character(lexer)) {
@@ -177,7 +192,17 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
       break;
     }
     default: {
-      return HyperTextMarkerToken.TOKEN_UNKNOWN;
+      const token: SymbolToken = {
+        kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+        meta: {
+          representation: lexer.source,
+          length: 1,
+          start: lexer.position,
+          end: lexer.position + 1,
+        }
+      }
+
+      return token;
     }
   }
 }
@@ -189,6 +214,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
   }
 
   let result: HyperTextMarkerToken[] = []
+
   while(!lexer_reached_eof(lexer)) {
     const next_character = lexer_peek_character(lexer);
 
@@ -197,11 +223,30 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       lexer_advance(lexer);
     } 
     else if(next_character == '\t') {
-      result.push(HyperTextMarkerToken.TOKEN_INDENTATION);
+      const token: IndentationToken = {
+        kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+        meta: {
+          representation: lexer.source,
+          length: 1,
+          start: lexer.position,
+          end: lexer.position + 1,
+        }
+      };
+      result.push(token);
+
       lexer_advance(lexer);
     }
     else if(next_character == '\n') {
-      result.push(HyperTextMarkerToken.TOKEN_NEWLINE)
+      const new_line_token: EndOfLineToken = {
+        kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
+        meta: {
+          representation: lexer.source,
+          length: 1,
+          start: lexer.position,
+          end: lexer.position + 1,
+        }
+      }
+      result.push(new_line_token);
       lexer_advance(lexer);
     } 
     else if(is_whitespace(next_character)) {
@@ -219,7 +264,17 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
     
   }
 
-  result.push(HyperTextMarkerToken.TOKEN_EOF);
+  const token: EndOfFileToken = {
+    kind: HyperTextMarkerTokenTag.TOKEN_EOF,
+    meta: {
+      representation: lexer.source,
+      length: 1,
+      start: lexer.position,
+      end: lexer.position,
+    }
+  }
+
+  result.push(token);
   return result;
 }
 
