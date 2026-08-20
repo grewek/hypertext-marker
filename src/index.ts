@@ -1,23 +1,68 @@
-export enum HyperTextMarkerToken {
-  TOKEN_HEADING_H1,
-  TOKEN_HEADING_H2,
-  TOKEN_HEADING_H3,
-  TOKEN_HEADING_H4,
-  TOKEN_HEADING_H5,
-  TOKEN_HEADING_H6,
-  TOKEN_UNKNOWN,
-  TOKEN_SYMBOL_HASH_SIGN,
-  TOKEN_WHITESPACE,
-  TOKEN_INDENTATION,
-  TOKEN_STAR_SYMBOL,
-  TOKEN_NEWLINE,
-  TOKEN_EOF,
+export enum HyperTextMarkerTokenTag {
+  TOKEN_HEADING = "TOKEN_HEADING",
+  TOKEN_UNKNOWN = "TOKEN_UNKNOWN",
+  TOKEN_SYMBOL = 'TOKEN_SYMBOL',
+  TOKEN_WHITESPACE = "TOKEN_WHITESPACE",
+  TOKEN_INDENTATION = "TOKEN_INDENTATION",
+  TOKEN_NEWLINE = "TOKEN_NEWLINE",
+  TOKEN_EOF = "TOKEN_EOF",
 }
 
 interface Lexer {
   source: string,
   position: number,
 }
+
+export interface UnknownToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_UNKNOWN,
+  meta: TokenMetaData,
+}
+
+export interface HeadingToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
+  depth: number,
+  meta: TokenMetaData,
+}
+
+export interface SymbolToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+  meta: TokenMetaData,
+}
+
+export interface WhitespaceToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+  meta: TokenMetaData
+}
+
+export interface IndentationToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+  meta: TokenMetaData,
+}
+
+export interface EndOfLineToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
+  meta: TokenMetaData,
+}
+
+export interface EndOfFileToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_EOF,
+  meta: TokenMetaData,
+}
+
+export interface TokenMetaData {
+  representation: string,
+  length: number,
+  start: number,
+  end: number,
+}
+
+export type HyperTextMarkerToken = 
+  UnknownToken     |
+  HeadingToken     |
+  SymbolToken      | 
+  WhitespaceToken  | 
+  IndentationToken |
+  EndOfFileToken;
 
 function lexer_reached_eof(lexer: Lexer): boolean {
   return lexer.position >= lexer.source.length;
