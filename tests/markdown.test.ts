@@ -1,5 +1,8 @@
 import { expect, test } from 'vitest'
-import { HyperTextMarkerToken, tokenize, transpile_md_to_html } from '../src/index.ts'
+import { HyperTextMarkerToken, UnknownToken, SymbolToken, 
+  HeadingToken, WhitespaceToken, IndentationToken, 
+  TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
+  tokenize, transpile_md_to_html } from '../src/index.ts'
 
 //NOTE: Markdown is after checking the format, not context free :( that means we need a lexer and make multiple passes over the input file.
 
@@ -18,30 +21,32 @@ import { HyperTextMarkerToken, tokenize, transpile_md_to_html } from '../src/ind
 test('the lexer handles atx-heading indicators', () => {
   let input = "#\n##\n###\n####\n#####\n######"
   let expected: HyperTextMarkerToken[] = [
-    HyperTextMarkerToken.TOKEN_HEADING_H1,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_HEADING_H2,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_HEADING_H3,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_HEADING_H4,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_HEADING_H5,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_HEADING_H6,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 1 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 2 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 3 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 4 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 5 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_HEADING, depth: 6 } as HeadingToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_EOF } as EndOfFileToken,
     HyperTextMarkerToken.TOKEN_EOF,
   ];
 
   let result = tokenize(input);
   expect(result).toStrictEqual(expected);
 })
+
 test('the lexer handles whitespace as token and does not ignore it', () => {
   let input = "   ";
   let expected: HyperTextMarkerToken[] = [
-    HyperTextMarkerToken.TOKEN_WHITESPACE,
-    HyperTextMarkerToken.TOKEN_WHITESPACE,
-    HyperTextMarkerToken.TOKEN_WHITESPACE,
-    HyperTextMarkerToken.TOKEN_EOF,
+    { kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE } as WhitespaceToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE } as WhitespaceToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE } as WhitespaceToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_EOF } as TOKEN_EOF,
   ];
 
   let result = tokenize(input);
