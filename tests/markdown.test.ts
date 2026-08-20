@@ -57,11 +57,11 @@ test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation 
   let input = "    \n\t\n";
 
   let expected: HyperTextMarkerToken[] = [
-    HyperTextMarkerToken.TOKEN_INDENTATION,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_INDENTATION,
-    HyperTextMarkerToken.TOKEN_NEWLINE,
-    HyperTextMarkerToken.TOKEN_EOF
+    { kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION } as IndentationToken,
+    { kind: HyperTextMarkerToken.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION } as IndentationToken,
+    { kind: HyperTextMarkerToken.TOKEN_NEWLINE } as EndOfLineToken,
+    { kind: HyperTextMarkerTokenTag.TOKEN_EOF } as TOKEN_EOF,
   ];
 
   let result = tokenize(input);
