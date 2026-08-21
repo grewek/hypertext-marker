@@ -59,8 +59,8 @@ export interface TokenMetaData {
 export type HyperTextMarkerToken = 
   UnknownToken     |
   HeadingToken     |
-  SymbolToken      | 
-  WhitespaceToken  | 
+  SymbolToken      |
+  WhitespaceToken  |
   IndentationToken |
   EndOfLineToken   |
   EndOfFileToken;
@@ -102,32 +102,33 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
   const length = end - start;
 
   //NOTE: Add Indentation Tokens
-  const symbol_count = Math.floor(length / 4);
-  for(let i = 0; i < symbol_count; i++) {
+  const indentation_block_count = Math.floor(length / 4);
+
+  for(let i = 0; i < indentation_block_count; i++) {
     const token: IndentationToken = {
       kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
       meta: {
-        representation: lexer.source,
+        representation: lexer.source.slice(indentation_block_count * i, indentation_block_count * i + 4),
         //TODO: We need to calculate the correct start and end of the indentation blocks!
-        length: length,
-        start: start,
-        end: end,
+        length: 4,
+        start: start + (indentation_block_count * i),
+        end: (start + (indentation_block_count * i) + 4) - 1,
       }
     }
     tokens.push(token);
   }
 
-  //NOTE: Add Whitespace tokens that were not consume by the previous operation
-  let rest = length - (symbol_count * 4);
+  //NOTE: Add Whitespace tokens that were not consumed by the previous operation
+  let rest = length - (indentation_block_count * 4);
   for(let i = 0; i < rest; i++) {
     const token: WhitespaceToken = {
       kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
       meta: {
-        representation: lexer.source,
+        representation: " ",
         //TODO: We need to calculate the correct start and end of the indentation blocks!
-        length: start - end,
-        start: start,
-        end: end,
+        length: 1,
+        start: (indentation_block_count * 4) + i,
+        end: (indentation_block_count * 4) + i,
       }
     }
     tokens.push(token);
@@ -147,26 +148,27 @@ function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
       lexer_advance(lexer);
       end = lexer.position;
     } else {
+      next_character = lexer_peek_next_character(lexer);
       if((next_character != '\n' && next_character != '\r') && is_whitespace(next_character)) {
         whitespace_detected = true;
       }
 
       lexer_advance(lexer);
+      end = lexer.position;
       break;
     }
   }
 
-  const length = (end - start) + 1;
-
+  const length = end - start;
   if ((length >= 1 && length <= 6) && whitespace_detected == true) {
     const token: HeadingToken = {
       kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
       depth: length,
       meta: {
-        representation: lexer.source,
-        length: end - start,
+        representation: lexer.source.slice(start, end),
+        length: length,
         start: start,
-        end: end,
+        end: end - 1,
       }
     };
 
@@ -189,7 +191,6 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   switch(lexer_peek_character(lexer)) {
     case '#': {
       return lexer_handle_possible_heading(lexer);
-      break;
     }
     default: {
       const token: SymbolToken = {
@@ -226,10 +227,10 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       const token: IndentationToken = {
         kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
         meta: {
-          representation: lexer.source,
+          representation: "\t",
           length: 1,
           start: lexer.position,
-          end: lexer.position + 1,
+          end: lexer.position,
         }
       };
       result.push(token);
@@ -240,10 +241,10 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       const new_line_token: EndOfLineToken = {
         kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
         meta: {
-          representation: lexer.source,
+          representation: '\n',
           length: 1,
           start: lexer.position,
-          end: lexer.position + 1,
+          end: lexer.position,
         }
       }
       result.push(new_line_token);
@@ -251,12 +252,12 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
     } 
     else if(is_whitespace(next_character)) {
       const generated_tokens = generate_whitespace_token(lexer)
-      result = [... generated_tokens];
+      result = [...result, ...generated_tokens];
     } 
     else if (is_symbol(next_character)) {
-      
       const generated_token = lexer_handle_symbol(lexer);
       result.push(generated_token);
+      lexer_advance(lexer);
     }
     else {
       lexer_advance(lexer);
@@ -267,7 +268,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
   const token: EndOfFileToken = {
     kind: HyperTextMarkerTokenTag.TOKEN_EOF,
     meta: {
-      representation: lexer.source,
+      representation: "",
       length: 1,
       start: lexer.position,
       end: lexer.position,
