@@ -1,9 +1,10 @@
+const INDENTATION_BLOCK_SIZE = 4;
+
 export enum HyperTextMarkerTokenTag {
-  TOKEN_HEADING = "TOKEN_HEADING",
   TOKEN_UNKNOWN = "TOKEN_UNKNOWN",
-  TOKEN_SYMBOL = 'TOKEN_SYMBOL',
+  TOKEN_SYMBOL = "TOKEN_SYMBOL",
   TOKEN_WHITESPACE = "TOKEN_WHITESPACE",
-  TOKEN_INDENTATION = "TOKEN_INDENTATION",
+  TOKEN_TAB = "TOKEN_TAB",
   TOKEN_NEWLINE = "TOKEN_NEWLINE",
   TOKEN_EOF = "TOKEN_EOF",
 }
@@ -18,25 +19,18 @@ export interface UnknownToken {
   meta: TokenMetaData,
 }
 
-export interface HeadingToken {
-  kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-  depth: number,
-  meta: TokenMetaData,
-}
-
 export interface SymbolToken {
   kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+  symbol: string,
+  repeat_count: number,
   meta: TokenMetaData,
 }
 
 export interface WhitespaceToken {
   kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+  repeat_count: number,
+  foldable: boolean,
   meta: TokenMetaData
-}
-
-export interface IndentationToken {
-  kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
-  meta: TokenMetaData,
 }
 
 export interface EndOfLineToken {
@@ -58,10 +52,8 @@ export interface TokenMetaData {
 
 export type HyperTextMarkerToken = 
   UnknownToken     |
-  HeadingToken     |
   SymbolToken      |
   WhitespaceToken  |
-  IndentationToken |
   EndOfLineToken   |
   EndOfFileToken;
 
@@ -82,8 +74,6 @@ function lexer_peek_next_character(lexer: Lexer): string {
 }
 
 function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
-  let tokens: HyperTextMarkerToken[] = [];
-
   const start = lexer.position;
   let end = lexer.position;
 
@@ -101,111 +91,54 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
 
   const length = end - start;
 
-  //NOTE: Add Indentation Tokens
-  const indentation_block_count = Math.floor(length / 4);
-
-  for(let i = 0; i < indentation_block_count; i++) {
-    const token: IndentationToken = {
-      kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
-      meta: {
-        representation: lexer.source.slice(indentation_block_count * i, indentation_block_count * i + 4),
-        //TODO: We need to calculate the correct start and end of the indentation blocks!
-        length: 4,
-        start: start + (indentation_block_count * i),
-        end: (start + (indentation_block_count * i) + 4) - 1,
-      }
+  const result: WhitespaceToken = {
+    kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+    repeat_count: length,
+    foldable: false,
+    meta: {
+      representation: lexer.source.slice(start, end),
+      length: length,
+      start: start,
+      end: end,
     }
-    tokens.push(token);
   }
 
-  //NOTE: Add Whitespace tokens that were not consumed by the previous operation
-  let rest = length - (indentation_block_count * 4);
-  for(let i = 0; i < rest; i++) {
-    const token: WhitespaceToken = {
-      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-      meta: {
-        representation: " ",
-        //TODO: We need to calculate the correct start and end of the indentation blocks!
-        length: 1,
-        start: (indentation_block_count * 4) + i,
-        end: (indentation_block_count * 4) + i,
-      }
-    }
-    tokens.push(token);
-  }
-
-  return tokens;
+  return result;
 }
 
-function lexer_handle_possible_heading(lexer: Lexer): HyperTextMarkerToken {
+function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   const start = lexer.position;
   let end = lexer.position;
   let whitespace_detected = false;
 
+  const first_found_symbol = lexer_peek_character(lexer);
+
   while(!lexer_reached_eof(lexer)) {
-    let next_character = lexer_peek_next_character(lexer);
-    if(next_character == '#') {
+    const next_character = lexer_peek_character(lexer);
+    if(next_character === first_found_symbol) {
       lexer_advance(lexer);
       end = lexer.position;
     } else {
-      next_character = lexer_peek_next_character(lexer);
-      if((next_character != '\n' && next_character != '\r') && is_whitespace(next_character)) {
-        whitespace_detected = true;
-      }
-
-      lexer_advance(lexer);
-      end = lexer.position;
       break;
     }
   }
 
   const length = end - start;
-  if ((length >= 1 && length <= 6) && whitespace_detected == true) {
-    const token: HeadingToken = {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-      depth: length,
-      meta: {
-        representation: lexer.source.slice(start, end),
-        length: length,
-        start: start,
-        end: end - 1,
-      }
-    };
 
-    return token;
-  }
 
   const token: SymbolToken = {
     kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+    symbol: lexer.source[start],
+    repeat_count: length,
     meta: {
-      representation: lexer.source,
-      length: 1,
+      representation: lexer.source.slice(start, end),
+      length: length,
       start: start,
       end: end,
     }
   }
 
   return token;
-}
-function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
-  switch(lexer_peek_character(lexer)) {
-    case '#': {
-      return lexer_handle_possible_heading(lexer);
-    }
-    default: {
-      const token: SymbolToken = {
-        kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
-        meta: {
-          representation: lexer.source,
-          length: 1,
-          start: lexer.position,
-          end: lexer.position + 1,
-        }
-      }
-
-      return token;
-    }
-  }
 }
 
 export function tokenize(source: string): HyperTextMarkerToken[] {
@@ -222,10 +155,12 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
     //NOTE: Windows uses \r\n so we just consume the \r and react on \n
     if(next_character == '\r') { 
       lexer_advance(lexer);
-    } 
+    }
     else if(next_character == '\t') {
-      const token: IndentationToken = {
-        kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+      const token: WhitespaceToken = {
+        kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+        repeat_count: 1,
+        foldable: true,
         meta: {
           representation: "\t",
           length: 1,
@@ -233,6 +168,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
           end: lexer.position,
         }
       };
+
       result.push(token);
 
       lexer_advance(lexer);
@@ -251,16 +187,15 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       lexer_advance(lexer);
     } 
     else if(is_whitespace(next_character)) {
-      const generated_tokens = generate_whitespace_token(lexer)
-      result = [...result, ...generated_tokens];
+      const generated_token = generate_whitespace_token(lexer)
+      result.push(generated_token);
     } 
     else if (is_symbol(next_character)) {
       const generated_token = lexer_handle_symbol(lexer);
       result.push(generated_token);
-      lexer_advance(lexer);
     }
     else {
-      lexer_advance(lexer);
+      lexer_advance(lexer)
     }
     
   }
