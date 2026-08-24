@@ -4,31 +4,18 @@ import { HyperTextMarkerToken, UnknownToken, SymbolToken,
   TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
   tokenize, transpile_md_to_html } from '../src/index.ts'
 
-//NOTE: Markdown is after checking the format, not context free :( that means we need a lexer and make multiple passes over the input file.
-
-
-/*test('the lexer handles symbols as seperate tokens', () => {
-  let input = '*';
-  let expected: HyperTextMarkerToken[] = [
-    HyperTextMarkerToken.TOKEN_STAR_SYMBOL,
-    HyperTextMarkerToken.TOKEN_EOF,
-  ];
-
-  let result = tokenize(input);
-  expect(result).toStrictEqual(expected);
-})*/
-
 test('the lexer handles atx-heading indicators', () => {
-  let input = "# \n## \n### \n#### \n##### \n###### "
+  let input = "#\n##\n###\n####\n#####\n######"
   let expected: HyperTextMarkerToken[] = [
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING, 
-      depth: 1,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL, 
+      repeat_count: 1,
+      symbol: '#',
       meta: {
         representation: "#", 
         length: 1,
         start: 0,
-        end: 0,
+        end: 1,
       }
     } as HeadingToken,
     {
@@ -36,17 +23,18 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: '\n',
         length: 1,
-        start: 2,
-        end: 2,
+        start: 1,
+        end: 1,
       }
     } as EndOfLineToken,
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-      depth: 2,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      repeat_count: 2,
+      symbol: '#',
       meta: {
         representation: "##",
         length: 2,
-        start: 3,
+        start: 2,
         end: 4,
       }
     } as HeadingToken,
@@ -55,18 +43,19 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: "\n",
         length: 1,
-        start: 6,
-        end: 6,
+        start: 4,
+        end: 4,
       }
     } as EndOfLineToken,
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING, 
-      depth: 3,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL, 
+      repeat_count: 3,
+      symbol: '#',
       meta: {
         representation: "###",
         length: 3,
-        start: 7,
-        end: 9,
+        start: 5,
+        end: 8,
       }
     } as HeadingToken,
     {
@@ -74,18 +63,19 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: "\n",
         length: 1,
-        start: 11,
-        end: 11,
+        start: 8,
+        end: 8,
       }
     } as EndOfLineToken,
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-      depth: 4,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      repeat_count: 4,
+      symbol: '#',
       meta: {
         representation: "####",
         length: 4,
-        start: 12,
-        end: 15,
+        start: 9,
+        end: 13,
       }
     } as HeadingToken,
     {
@@ -93,18 +83,19 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: "\n",
         length: 1,
-        start: 17,
-        end: 17,
+        start: 13,
+        end: 13,
       }
     } as EndOfLineToken,
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-      depth: 5,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      repeat_count: 5,
+      symbol: '#',
       meta: {
         representation: "#####",
         length: 5,
-        start: 18,
-        end: 22,
+        start: 14,
+        end: 19,
       }
     } as HeadingToken,
     {
@@ -112,18 +103,19 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: '\n',
         length: 1,
-        start: 24,
-        end: 24,
+        start: 19,
+        end: 19,
       }
     } as EndOfLineToken,
     {
-      kind: HyperTextMarkerTokenTag.TOKEN_HEADING,
-      depth: 6,
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      repeat_count: 6,
+      symbol: '#',
       meta: {
         representation: "######",
         length: 6,
-        start: 25,
-        end: 30,
+        start: 20,
+        end: 26,
       }
     } as HeadingToken,
     {
@@ -131,8 +123,8 @@ test('the lexer handles atx-heading indicators', () => {
       meta: {
         representation: "",
         length: 1,
-        start: 32,
-        end: 32, 
+        start: 26,
+        end: 26, 
       }
     } as EndOfFileToken,
   ];
@@ -146,29 +138,13 @@ test('the lexer handles whitespace as token and does not ignore it', () => {
   let expected: HyperTextMarkerToken[] = [
     { 
       kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 3,
+      foldable: false,
       meta: {
-        representation: " ",
-        length: 1,
+        representation: "   ",
+        length: 3,
         start: 0,
-        end: 0,
-      }
-    } as WhitespaceToken,
-    { 
-      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-      meta: {
-        representation: " ",
-        length: 1,
-        start: 1,
-        end: 1,
-      }
-    } as WhitespaceToken,
-    { 
-      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-      meta: {
-        representation: " ",
-        length: 1,
-        start: 2,
-        end: 2,
+        end: 3,
       }
     } as WhitespaceToken,
     { 
@@ -191,11 +167,13 @@ test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation 
 
   let expected: HyperTextMarkerToken[] = [
     { 
-      kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 4,
+      foldable: false,
       meta: {
         representation: "    ",
         start: 0,
-        end: 3,
+        end: 4,
         length: 4,
       } 
     } as IndentationToken,
@@ -209,7 +187,9 @@ test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation 
       } 
     } as EndOfLineToken,
     { 
-      kind: HyperTextMarkerTokenTag.TOKEN_INDENTATION,
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: true,
       meta: {
         representation: "\t",
         start: 5,
