@@ -4,9 +4,96 @@ import { HyperTextMarkerToken, UnknownToken, SymbolToken,
   TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
   tokenize, transpile_md_to_html } from '../src/index.ts'
 
+test('the lexer handles normal text as identifiers', () => {
+  const input = "this is normal text";
+  const expected = [
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "this",
+        length: "this".length,
+        start: 0,
+        end: "this".length
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: " ".length,
+        start: "this".length,
+        end: "this ".length
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "is",
+        length: "is".length,
+        start: "this ".length,
+        end: "this is".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: " ".length,
+        start: "this is".length,
+        end: "this is ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "normal",
+        length: "normal".length,
+        start: "this is ".length,
+        end: "this is normal".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: " ".length,
+        start: "this is normal".length,
+        end: "this is normal ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "text",
+        length: "text".length,
+        start: "this is normal ".length,
+        end: "this is normal text".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_EOF,
+      meta: {
+        representation: "",
+        length: 1,
+        start: "this is normal text".length,
+        end: "this is normal text".length,
+      }
+    }
+  ]
+
+  const result = tokenize(input);
+  expect(result).toStrictEqual(expected);
+});
+
 test('the lexer handles atx-heading indicators', () => {
-  let input = "#\n##\n###\n####\n#####\n######"
-  let expected: HyperTextMarkerToken[] = [
+  const input = "#\n##\n###\n####\n#####\n######"
+  const expected: HyperTextMarkerToken[] = [
     {
       kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL, 
       repeat_count: 1,
@@ -129,13 +216,13 @@ test('the lexer handles atx-heading indicators', () => {
     } as EndOfFileToken,
   ];
 
-  let result = tokenize(input);
+  const result = tokenize(input);
   expect(result).toStrictEqual(expected);
 })
 
 test('the lexer handles whitespace as token and does not ignore it', () => {
-  let input = "   ";
-  let expected: HyperTextMarkerToken[] = [
+  const input = "   ";
+  const expected: HyperTextMarkerToken[] = [
     { 
       kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
       repeat_count: 3,
@@ -158,14 +245,14 @@ test('the lexer handles whitespace as token and does not ignore it', () => {
     } as TOKEN_EOF,
   ];
 
-  let result = tokenize(input);
+  const result = tokenize(input);
   expect(result).toStrictEqual(expected);
 })
 
 test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation level', () => {
-  let input = "    \n\t\n";
+  const input = "    \n\t\n";
 
-  let expected: HyperTextMarkerToken[] = [
+  const expected: HyperTextMarkerToken[] = [
     { 
       kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
       repeat_count: 4,
@@ -217,6 +304,6 @@ test('the lexer handles tab symbols or 4 consecutive whitespaces as indentation 
     } as TOKEN_EOF,
   ];
 
-  let result = tokenize(input);
+  const result = tokenize(input);
   expect(result).toStrictEqual(expected);
 })
