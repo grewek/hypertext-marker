@@ -2,6 +2,7 @@ const INDENTATION_BLOCK_SIZE = 4;
 
 export enum HyperTextMarkerTokenTag {
   TOKEN_UNKNOWN = "TOKEN_UNKNOWN",
+  TOKEN_IDENTIFIER = "TOKEN_IDENTIFIER",
   TOKEN_SYMBOL = "TOKEN_SYMBOL",
   TOKEN_WHITESPACE = "TOKEN_WHITESPACE",
   TOKEN_TAB = "TOKEN_TAB",
@@ -16,6 +17,11 @@ interface Lexer {
 
 export interface UnknownToken {
   kind: HyperTextMarkerTokenTag.TOKEN_UNKNOWN,
+  meta: TokenMetaData,
+}
+
+export interface IdentifierToken {
+  kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
   meta: TokenMetaData,
 }
 
@@ -52,6 +58,7 @@ export interface TokenMetaData {
 
 export type HyperTextMarkerToken = 
   UnknownToken     |
+  IdentifierToken  |
   SymbolToken      |
   WhitespaceToken  |
   EndOfLineToken   |
@@ -73,7 +80,7 @@ function lexer_peek_next_character(lexer: Lexer): string {
   return lexer.source[lexer.position + 1] ?? "";
 }
 
-function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
+function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken {
   const start = lexer.position;
   let end = lexer.position;
 
@@ -84,8 +91,10 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
     }
 
     if(is_whitespace(next_character)) {
-      end += 1;
       lexer_advance(lexer);
+      end = lexer.position;
+    } else {
+      break;
     }
   }
 
@@ -106,6 +115,35 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken[] {
   return result;
 }
 
+function generate_identifier_token(lexer: Lexer): HyperTextMarkerToken {
+  const start = lexer.position;
+  let end = lexer.position;
+
+  while(!lexer_reached_eof(lexer)) {
+    const character = lexer_peek_character(lexer);
+
+    if(is_alphanumeric(character)) {
+      lexer_advance(lexer);
+      end = lexer.position;
+    } else {
+      break;
+    }
+  }
+
+  const length = end - start;
+
+  const result: IdentifierToken = {
+    kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+    meta: {
+      representation: lexer.source.slice(start, end),
+      length: length,
+      start: start,
+      end: end,
+    }
+  }
+
+  return result
+}
 function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   const start = lexer.position;
   let end = lexer.position;
@@ -126,19 +164,22 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   const length = end - start;
 
 
-  const token: SymbolToken = {
-    kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
-    symbol: lexer.source[start],
-    repeat_count: length,
-    meta: {
-      representation: lexer.source.slice(start, end),
-      length: length,
-      start: start,
-      end: end,
+  if(start >= lexer.source.length) {
+    throw new Error("lexer position " + start + " out of range for a source with length " + lexer.source.length);
+  } else {
+    const token: SymbolToken = {
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      symbol: lexer.source[start]!,
+      repeat_count: length,
+      meta: {
+        representation: lexer.source.slice(start, end),
+        length: length,
+        start: start,
+        end: end,
+      }
     }
+    return token;
   }
-
-  return token;
 }
 
 export function tokenize(source: string): HyperTextMarkerToken[] {
@@ -186,6 +227,10 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       result.push(new_line_token);
       lexer_advance(lexer);
     } 
+    else if(is_alphanumeric(next_character)) {
+      const generated_token = generate_identifier_token(lexer);
+      result.push(generated_token);
+    }
     else if(is_whitespace(next_character)) {
       const generated_token = generate_whitespace_token(lexer)
       result.push(generated_token);
@@ -209,6 +254,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       end: lexer.position,
     }
   }
+
 
   result.push(token);
   return result;
