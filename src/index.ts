@@ -167,7 +167,7 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   if(start >= lexer.source.length) {
     throw new Error("lexer position " + start + " out of range for a source with length " + lexer.source.length);
   } else {
-    const token: SymbolToken = {
+    const result: SymbolToken = {
       kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
       symbol: lexer.source[start]!,
       repeat_count: length,
@@ -178,7 +178,29 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
         end: end,
       }
     }
-    return token;
+    return result;
+  }
+}
+
+
+function new_whitespace_token(symbol: string, start: number, end: number): HyperTextMarkerToken {
+  if(start > end) {
+    throw new Error("start > end cannot create token");
+  }
+
+  const is_foldable = symbol == '\t' ? true : false;
+  const length = end - start;
+
+  return {
+    kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+    repeat_count: length,
+    foldable: is_foldable,
+    meta: {
+      representation: symbol,
+      length: length,
+      start: start,
+      end: end,
+    }
   }
 }
 
@@ -198,6 +220,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       lexer_advance(lexer);
     }
     else if(next_character == '\t') {
+      //const token = new_whitespace_token('\t', lexer.position, lexer.position);
       const token: WhitespaceToken = {
         kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
         repeat_count: 1,
@@ -211,7 +234,6 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       };
 
       result.push(token);
-
       lexer_advance(lexer);
     }
     else if(next_character == '\n') {
