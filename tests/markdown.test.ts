@@ -4,6 +4,190 @@ import { HyperTextMarkerToken, UnknownToken, SymbolToken,
   TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
   tokenize, transpile_md_to_html } from '../src/index.ts'
 
+test('the lexer handles symbols, text and newlines', () => {
+  const input = "this\nis normal text\n# mixed with symbols\n\t";
+  const expected = [
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "this",
+        length: "this".length,
+        start: 0,
+        end: "this".length
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
+      meta: {
+        representation: "\n",
+        length: 1,
+        start: "this".length,
+        end: "this".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "is",
+        length: "is".length,
+        start: "this\n".length,
+        end: "this\nis".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: " ".length,
+        start: "this\nis".length,
+        end: "this\nis ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "normal",
+        length: "normal".length,
+        start: "this\nis ".length,
+        end: "this\nis normal".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: 1,
+        start: "this\nis normal".length,
+        end: "this\nis normal ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "text",
+        length: "text".length,
+        start: "this\nis normal ".length,
+        end: "this\nis normal text".length
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
+      meta: {
+        representation: "\n",
+        length: 1,
+        start: "this\nis normal text".length,
+        end: "this\nis normal text".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_SYMBOL,
+      repeat_count: 1,
+      symbol: "#",
+      meta: {
+        representation: "#",
+        length: 1,
+        start: "this\nis normal text\n".length,
+        end: "this\nis normal text\n#".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: 1,
+        start: "this\nis normal text\n#".length,
+        end: "this\nis normal text\n# ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "mixed",
+        length: "mixed".length,
+        start: "this\nis normal text\n# ".length,
+        end: "this\nis normal text\n# mixed".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: 1,
+        start: "this\nis normal text\n# mixed".length,
+        end: "this\nis normal text\n# mixed ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "with",
+        length: "with".length,
+        start: "this\nis normal text\n# mixed ".length,
+        end: "this\nis normal text\n# mixed with".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: false,
+      meta: {
+        representation: " ",
+        length: 1,
+        start: "this\nis normal text\n# mixed with".length,
+        end: "this\nis normal text\n# mixed with ".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+      meta: {
+        representation: "symbols",
+        length: "symbols".length,
+        start: "this\nis normal text\n# mixed with ".length,
+        end: "this\nis normal text\n# mixed with symbols".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_NEWLINE,
+      meta:  {
+        representation: "\n",
+        length: 1,
+        start: "this\nis normal text\n# mixed with symbols".length,
+        end: "this\nis normal text\n# mixed with symbols".length,
+      }
+    },
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+      repeat_count: 1,
+      foldable: true,
+      meta: {
+        representation: "\t",
+        length: 1,
+        start: "this\nis normal text\n# mixed with symbols\n".length,
+        end: "this\nis normal text\n# mixed with symbols\n".length,
+      }
+    }, 
+    {
+      kind: HyperTextMarkerTokenTag.TOKEN_EOF,
+      meta: {
+        representation: "",
+        length: 1,
+        start: "this\nis normal text\n# mixed with symbols\n\t".length,
+        end: "this\nis normal text\n# mixed with symbols\n\t".length,
+      }
+    }
+  ]
+
+  let result = tokenize(input);
+  expect(result).toStrictEqual(expected);
+})
 test('the lexer handles normal text as identifiers', () => {
   const input = "this is normal text";
   const expected = [
