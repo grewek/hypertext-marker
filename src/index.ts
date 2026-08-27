@@ -98,19 +98,7 @@ function generate_whitespace_token(lexer: Lexer): HyperTextMarkerToken {
     }
   }
 
-  const length = end - start;
-
-  const result: WhitespaceToken = {
-    kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-    repeat_count: length,
-    foldable: false,
-    meta: {
-      representation: lexer.source.slice(start, end),
-      length: length,
-      start: start,
-      end: end,
-    }
-  }
+  const result: WhitespaceToken = new_whitespace_token(lexer.source.slice(start, end), start, end);
 
   return result;
 }
@@ -131,7 +119,6 @@ function generate_identifier_token(lexer: Lexer): HyperTextMarkerToken {
   }
 
   const length = end - start;
-
   const result: IdentifierToken = {
     kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
     meta: {
@@ -182,8 +169,7 @@ function lexer_handle_symbol(lexer: Lexer): HyperTextMarkerToken {
   }
 }
 
-
-function new_whitespace_token(symbol: string, start: number, end: number): HyperTextMarkerToken {
+function new_whitespace_token(symbol: string, start: number, end: number): WhitespaceToken {
   if(start > end) {
     throw new Error("start > end cannot create token");
   }
@@ -193,11 +179,11 @@ function new_whitespace_token(symbol: string, start: number, end: number): Hyper
 
   return {
     kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-    repeat_count: length,
+    repeat_count: length <= 0 ? 1 : length,
     foldable: is_foldable,
     meta: {
       representation: symbol,
-      length: length,
+      length: length <= 0 ? 1 : length,
       start: start,
       end: end,
     }
@@ -220,19 +206,7 @@ export function tokenize(source: string): HyperTextMarkerToken[] {
       lexer_advance(lexer);
     }
     else if(next_character == '\t') {
-      //const token = new_whitespace_token('\t', lexer.position, lexer.position);
-      const token: WhitespaceToken = {
-        kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
-        repeat_count: 1,
-        foldable: true,
-        meta: {
-          representation: "\t",
-          length: 1,
-          start: lexer.position,
-          end: lexer.position,
-        }
-      };
-
+      const token = new_whitespace_token('\t', lexer.position, lexer.position);
       result.push(token);
       lexer_advance(lexer);
     }
