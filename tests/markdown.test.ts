@@ -2,8 +2,99 @@ import { expect, test } from 'vitest'
 import { HyperTextMarkerToken, UnknownToken, SymbolToken, 
   HeadingToken, WhitespaceToken, IndentationToken, 
   TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
-  tokenize, transpile_md_to_html } from '../src/index.ts'
+  tokenize, parse, transpile_md_to_html } from '../src/index.ts'
 
+test('the basic tokens are parsed into blocks containing sub tokens', () => {
+  const input = "# this is a block"
+
+  const expected = [
+    {
+      kind: HyperTextBlockTag.HEADING_BLOCK,
+      depth: 1,
+      childs: [],
+      contained: [
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+          meta: {
+            representation: "this",
+            length: "this".length,
+            start: "# ".length,
+            end: "# this".length,
+          }
+        },
+        {
+          kind: HyerTextMarkerTokenTag.TOKEN_WHITESPACE,
+          repeat_count: 1,
+          foldable: false,
+          meta: {
+            representation: " ",
+            length: 1,
+            start: "# this".length,
+            end: "# this ".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+          meta: {
+            representation: "is",
+            length: "is".length,
+            start: "# this ".length,
+            end: "# this is".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+          repeat_count: 1,
+          foldable: false,
+          meta: {
+            representation: " ",
+            length: 1,
+            start: "# this is".length,
+            end: "# this is ".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+          meta: {
+            representation: "a",
+            length: "a".length,
+            start: "# this is ".length,
+            end: "# this is a".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
+          repeat_count: 1,
+          foldable: false,
+          meta: {
+            representation: " ",
+            length: 1,
+            start: "# this is a".length,
+            end: "# this is a ".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_IDENTIFIER,
+          meta: {
+            representation: "block",
+            length: "block".length,
+            start: "# this is a ".length,
+            end: "# this is a block".length,
+          }
+        },
+        {
+          kind: HyperTextMarkerTokenTag.TOKEN_EOF,
+          meta: {
+            representation: "",
+            length: 1,
+            start: "# this is a block".length,
+            end: "# this is a block".length,
+          }
+        }
+      ]
+    }
+  ]
+})
 test('the lexer handles symbols, text and newlines', () => {
   const input = "this\nis normal text\n# mixed with symbols\n\t";
   const expected = [
