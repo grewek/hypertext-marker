@@ -190,6 +190,74 @@ function new_whitespace_token(symbol: string, start: number, end: number): White
   }
 }
 
+enum HyperTextBlockTag {
+  HEADING_BLOCK = "HEADING_BLOCK",
+}
+
+interface HyperTextMarkerHeadingBlock {
+  kind: HyperTextBlockTag.HEADING_BLOCK,
+  depth: number,
+  childs: HyperTextMarkerBlock[],
+  contained: HyperTextMarkerToken[]
+}
+
+interface HyperTextMarkerParser {
+  tokens: HyperTextMarkerToken[],
+  position: number,
+}
+
+type HyperTextMarkerBlock = HyperTextMarkerHeadingBlock;
+
+function parser_parse_heading(parser: HyperTextMarkerParser, depth: number) -> HyperTextMarkerHeadingBlock {
+  const result = {
+    kind: HyperTextBlockTag.HEADING_BLOCK,
+    depth: depth,
+    childs: [], //TODO: This needs to be recursivly filled up with the necessary data
+    contained: [],
+  }
+
+  while(!parser_reached_eof(parser) && !parser_match_tokens([HyperTextMarkerTokenTag.TOKEN_NEWLINE])) {
+    const token = parser.tokens[parser.position];
+    result.contained.push(token);
+    parser_advance(parser);
+  }
+}
+
+//TODO: The whole api is wishful thinking right now!
+function parse_blocks(parser: HyperTextMarkerParser) -> HyperTextMarkerBlock[] {
+  let result = [];
+
+  while(!parser_reached_eof(parser)) {
+    if(parser_match_tokens([HyperTextMarkerTokenTag.TOKEN_SYMBOL])) {
+      const token = parser.tokens[parser.position];
+      parser_advance(parser);
+
+      if(token.symbol == '#' && parser_peek_token_type(parser) == HyperTextMarkerTokenTag.TOKEN_WHITESPACE) {
+        const whitespace_token = parser.tokens[position];
+        if(whitespace_token.repeat_count == 1 && !whitespace_token.foldable) {
+          parser_advance(parser);
+          const parsed_headings = parser_parse_heading(parser);
+          result = [...result, ...parsed_headings];
+        }
+      } else {
+        throw new Error("unknown element or unhandled case!");
+      }
+    }
+  }
+
+  return result;
+}
+
+export function parse(tokens: HyperTextMarkerToken[]) -> HyperTextMarkerBlock[] {
+  const parser = HyperTextMarkerParser {
+    tokens: tokens,
+    position: 0,
+  }
+  const parsed_blocks = parse_blocks(parser);
+
+  return parsed_blocks;
+}
+
 export function tokenize(source: string): HyperTextMarkerToken[] {
   let lexer: Lexer = {
     source: source,
