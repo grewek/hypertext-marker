@@ -190,54 +190,105 @@ function new_whitespace_token(symbol: string, start: number, end: number): White
   }
 }
 
-enum HyperTextBlockTag {
+export enum HyperTextBlockTag {
   HEADING_BLOCK = "HEADING_BLOCK",
+  PARAGRAPH_BLOCK = "PARAGRAPH_BLOCK",
 }
 
-interface HyperTextMarkerHeadingBlock {
+export interface HyperTextMarkerHeadingBlock {
   kind: HyperTextBlockTag.HEADING_BLOCK,
   depth: number,
-  childs: HyperTextMarkerBlock[],
   contained: HyperTextMarkerToken[]
 }
 
-interface HyperTextMarkerParser {
+export interface HyperTextMarkerParagraphBlock {
+  kind: HyperTextBlockTag.PARAGRAPH_BLOCK,
+  contained: HyperTextMarkerToken[],
+}
+
+export interface HyperTextMarkerParser {
   tokens: HyperTextMarkerToken[],
   position: number,
 }
 
-type HyperTextMarkerBlock = HyperTextMarkerHeadingBlock;
+export type HyperTextMarkerBlock = HyperTextMarkerHeadingBlock | HyperTextMarkerParagraphBlock;
 
-function parser_parse_heading(parser: HyperTextMarkerParser, depth: number) -> HyperTextMarkerHeadingBlock {
-  const result = {
+function parser_parse_heading(parser: HyperTextMarkerParser, depth: number): HyperTextMarkerHeadingBlock {
+
+  const result: HyperTextMarkerHeadingBlock = {
     kind: HyperTextBlockTag.HEADING_BLOCK,
     depth: depth,
-    childs: [], //TODO: This needs to be recursivly filled up with the necessary data
     contained: [],
   }
 
-  while(!parser_reached_eof(parser) && !parser_match_tokens([HyperTextMarkerTokenTag.TOKEN_NEWLINE])) {
+  while(!parser_reached_eof(parser) && !parser_match_tokens(parser, [HyperTextMarkerTokenTag.TOKEN_NEWLINE])) {
     const token = parser.tokens[parser.position];
+    if(token === undefined) {
+      throw new Error("Tried to access invalid token");
+    }
     result.contained.push(token);
     parser_advance(parser);
   }
+
+  return result;
+}
+
+function parser_reached_eof(parser: HyperTextMarkerParser): boolean {
+  return parser.position >= parser.tokens.length;
+}
+
+function parser_advance(parser: HyperTextMarkerParser) {
+  parser.position += 1;
+}
+
+function parser_peek_token_type(parser: HyperTextMarkerParser): HyperTextMarkerTokenTag {
+  if(parser.position <= parser.tokens.length - 1) {
+    return parser.tokens[parser.position + 1]!.kind;
+  } else {
+    return HyperTextMarkerTokenTag.TOKEN_EOF;
+  }
+}
+
+function parser_match_tokens(parser: HyperTextMarkerParser, tokens_to_match: HyperTextMarkerTokenTag[]): boolean {
+  const token  = parser.tokens[parser.position];
+  if(token === undefined) {
+    return false;
+  }
+
+  for(let i = 0; i < tokens_to_match.length; i++) {
+    if(token.kind == tokens_to_match[i]) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 //TODO: The whole api is wishful thinking right now!
-function parse_blocks(parser: HyperTextMarkerParser) -> HyperTextMarkerBlock[] {
-  let result = [];
+function parse_blocks(parser: HyperTextMarkerParser): HyperTextMarkerBlock[] {
+  let result: HyperTextMarkerBlock[] = []
 
   while(!parser_reached_eof(parser)) {
-    if(parser_match_tokens([HyperTextMarkerTokenTag.TOKEN_SYMBOL])) {
+    if(parser_match_tokens(parser, [HyperTextMarkerTokenTag.TOKEN_SYMBOL])) {
       const token = parser.tokens[parser.position];
-      parser_advance(parser);
 
-      if(token.symbol == '#' && parser_peek_token_type(parser) == HyperTextMarkerTokenTag.TOKEN_WHITESPACE) {
-        const whitespace_token = parser.tokens[position];
-        if(whitespace_token.repeat_count == 1 && !whitespace_token.foldable) {
+      if(token === undefined) {
+        throw new Error("Tried to access invalid token");
+      }
+
+      if(token.kind == HyperTextMarkerTokenTag.TOKEN_SYMBOL && token.symbol == '#' && parser_peek_token_type(parser) == HyperTextMarkerTokenTag.TOKEN_WHITESPACE) {
+        parser_advance(parser);
+        const whitespace_token = parser.tokens[parser.position];
+
+        console.log(whitespace_token);
+        if(whitespace_token === undefined) {
+          throw new Error("Tried to access invalid token");
+        }
+
+        if(whitespace_token.kind == HyperTextMarkerTokenTag.TOKEN_WHITESPACE && whitespace_token.repeat_count == 1 && !whitespace_token.foldable) {
           parser_advance(parser);
-          const parsed_headings = parser_parse_heading(parser);
-          result = [...result, ...parsed_headings];
+          const parsed_heading = parser_parse_heading(parser, token.meta.length);
+          result.push(parsed_heading);
         }
       } else {
         throw new Error("unknown element or unhandled case!");
@@ -248,8 +299,8 @@ function parse_blocks(parser: HyperTextMarkerParser) -> HyperTextMarkerBlock[] {
   return result;
 }
 
-export function parse(tokens: HyperTextMarkerToken[]) -> HyperTextMarkerBlock[] {
-  const parser = HyperTextMarkerParser {
+export function parse(tokens: HyperTextMarkerToken[]): HyperTextMarkerBlock[] {
+  const parser: HyperTextMarkerParser = {
     tokens: tokens,
     position: 0,
   }
