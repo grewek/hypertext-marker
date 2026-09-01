@@ -2,7 +2,9 @@ import { expect, test } from 'vitest'
 import { HyperTextMarkerToken, UnknownToken, SymbolToken, 
   HeadingToken, WhitespaceToken, IndentationToken, 
   TokenEndOfFile, HyperTextMarkerTokenTag, EndOfLineToken,
-  tokenize, parse, transpile_md_to_html } from '../src/index.ts'
+  tokenize, parse, transpile_md_to_html, HyperTextBlockTag, 
+  HyperTextMarkerHeadingBlock, HyperTextParagraphBlock, 
+  HyperTextMarkerBlock  } from '../src/index.ts'
 
 test('the basic tokens are parsed into blocks containing sub tokens', () => {
   const input = "# this is a block"
@@ -23,7 +25,7 @@ test('the basic tokens are parsed into blocks containing sub tokens', () => {
           }
         },
         {
-          kind: HyerTextMarkerTokenTag.TOKEN_WHITESPACE,
+          kind: HyperTextMarkerTokenTag.TOKEN_WHITESPACE,
           repeat_count: 1,
           foldable: false,
           meta: {
@@ -94,6 +96,11 @@ test('the basic tokens are parsed into blocks containing sub tokens', () => {
       ]
     }
   ]
+
+  const tokens = tokenize(input);
+  const result = parse(tokens);
+
+  expect(result).toStrictEqual(expected);
 })
 test('the lexer handles symbols, text and newlines', () => {
   const input = "this\nis normal text\n# mixed with symbols\n\t";
